@@ -2,18 +2,19 @@
   "functions": {
     "api/send-email.js": {
       "maxDuration": 30,
-      "memory": 1024,
-      "regions": ["iad1", "sfo1", "lhr1", "hnd1"]
+      "memory": 1024
     },
     "api/get-config.js": {
       "maxDuration": 10,
-      "memory": 512,
-      "regions": ["iad1", "sfo1", "lhr1", "hnd1"]
+      "memory": 512
     },
     "api/health.js": {
       "maxDuration": 5,
-      "memory": 256,
-      "regions": ["iad1", "sfo1", "lhr1", "hnd1"]
+      "memory": 256
+    },
+    "api/metrics.js": {
+      "maxDuration": 10,
+      "memory": 512
     }
   },
   "headers": [
@@ -35,6 +36,10 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     }
@@ -43,6 +48,10 @@
     {
       "source": "/health",
       "destination": "/api/health"
+    },
+    {
+      "source": "/metrics",
+      "destination": "/api/metrics"
     }
   ]
 }
