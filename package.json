@@ -1,0 +1,18 @@
+{
+  "name": "vercel-email-api",
+  "version": "1.0.0",
+  "description": "Email API service with Supabase verification",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "nodemailer": "^7.0.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  }
+}
