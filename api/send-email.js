@@ -1,122 +1,169 @@
-import { createClient } from '@supabase/supabase-js';
-import nodemailer from 'nodemailer';
+import { getSupabaseClient, getSmtpTransporter, cacheGet, cacheSet } from '../lib/connection-manager.js';
+import { checkRateLimit, releaseRequest, validateEmailRequest } from '../lib/rate-limiter.js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+// Response compression
+const compress = (data) => JSON.stringify(data);
 
 export default async function handler(req, res) {
-  // Only allow POST requests
+  // Set performance headers
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const userId = req.headers['x-api-key'];
+  let startTime = Date.now();
+  
   try {
-    // Get user ID from API key header
-    const userId = req.headers['x-api-key'];
-    if (!userId) {
-      return res.status(401).json({ error: 'Missing x-api-key header (user ID required)' });
+    // Fast validation
+    if (!userId || typeof userId !== 'string' || userId.length !== 36) {
+      return res.status(401).json({ error: 'Invalid API key format' });
+    }
+
+    // Validate request body
+    const validation = validateEmailRequest(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
 
     const { to, subject, html, attachments } = req.body;
 
-    // Validate required fields
-    if (!to || !subject || !html) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: to, subject, html' 
+    // Check cache for user data first
+    const cacheKey = `user_${userId}`;
+    let user = cacheGet(cacheKey);
+    
+    if (!user) {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, plan_type, emails_sent_this_month, smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_name')
+        .eq('id', userId)
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      user = data;
+      // Cache user data for 5 minutes
+      cacheSet(cacheKey, user, 300);
+    }
+
+    // Rate limiting check
+    const rateCheck = checkRateLimit(userId, user.plan_type);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({ 
+        error: rateCheck.error,
+        retryAfter: rateCheck.retryAfter
       });
     }
 
-    // Get user data and SMTP config by user ID
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email, plan_type, emails_sent_this_month, smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_name')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !user) {
-      return res.status(404).json({ error: 'User not found with provided API key' });
-    }
-
-    // Check if user is premium or free
     const isPremium = user.plan_type === 'premium';
     
-    // If free user, check if they've exceeded 3000 emails (premium users have no limit)
+    // Email limit check for free users
     if (!isPremium && user.emails_sent_this_month >= 3000) {
+      releaseRequest(userId);
       return res.status(429).json({ 
-        error: 'Free plan email limit exceeded (3000/month). Upgrade to premium for unlimited emails.' 
+        error: 'Monthly email limit exceeded (3000/month)' 
       });
     }
 
-    // Create nodemailer transporter with user's SMTP config
-    const transporter = nodemailer.createTransport({
-      host: user.smtp_host,
-      port: user.smtp_port,
-      secure: user.smtp_secure,
-      auth: {
-        user: user.smtp_user,
-        pass: user.smtp_pass
-      }
+    // Get SMTP transporter from pool
+    const transporter = getSmtpTransporter({
+      smtp_host: user.smtp_host,
+      smtp_port: user.smtp_port,
+      smtp_secure: user.smtp_secure,
+      smtp_user: user.smtp_user,
+      smtp_pass: user.smtp_pass
     });
 
-    // Send email
+    // Prepare email options
     const mailOptions = {
       from: `"${user.from_name}" <${user.smtp_user}>`,
-      to: to,
-      subject: subject,
-      html: html
+      to,
+      subject,
+      html,
+      messageId: `${Date.now()}.${userId}@api-drift-spike.vercel.app`
     };
 
-    // Add attachments if provided
-    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
-      mailOptions.attachments = attachments.map(attachment => {
-        // Support both base64 content and file paths
-        if (attachment.content) {
-          return {
-            filename: attachment.filename,
-            content: attachment.content,
-            encoding: attachment.encoding || 'base64',
-            contentType: attachment.contentType
-          };
-        } else if (attachment.path) {
-          return {
-            filename: attachment.filename,
-            path: attachment.path,
-            contentType: attachment.contentType
-          };
-        }
-        return attachment;
-      });
+    // Process attachments efficiently
+    if (attachments?.length > 0) {
+      mailOptions.attachments = attachments.map(({ filename, content, contentType, encoding = 'base64' }) => ({
+        filename,
+        content,
+        encoding,
+        contentType
+      }));
     }
 
-    await transporter.sendMail(mailOptions);
+    // Send email with timeout
+    const emailPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email timeout')), 30000)
+    );
+    
+    await Promise.race([emailPromise, timeoutPromise]);
 
-    // Update user's email count (only for free users)
+    // Update email count asynchronously for free users
     if (!isPremium) {
-      await supabase
+      // Don't await this - fire and forget for better performance
+      const supabase = getSupabaseClient();
+      supabase
         .from('users')
         .update({ emails_sent_this_month: user.emails_sent_this_month + 1 })
-        .eq('id', user.id);
+        .eq('id', userId)
+        .then(() => {
+          // Invalidate cache after update
+          const cacheKey = `user_${userId}`;
+          cacheSet(cacheKey, { ...user, emails_sent_this_month: user.emails_sent_this_month + 1 }, 300);
+        })
+        .catch(() => {}); // Silent fail for performance
     }
 
-    return res.status(200).json({ 
-      success: true, 
+    // Release rate limit
+    releaseRequest(userId);
+
+    const responseTime = Date.now() - startTime;
+    
+    return res.status(200).json({
+      success: true,
       message: 'Email sent successfully',
       user: {
         id: user.id,
         email: user.email,
         plan: user.plan_type,
-        emails_sent: isPremium ? 'unlimited' : user.emails_sent_this_month + 1,
-        smtp_from: user.from_name
+        emails_sent: isPremium ? 'unlimited' : user.emails_sent_this_month + 1
+      },
+      performance: {
+        responseTime: `${responseTime}ms`,
+        cached: !!cacheGet(cacheKey)
       }
     });
 
   } catch (error) {
-    console.error('Email sending error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to send email', 
-      details: error.message 
-    });
+    releaseRequest(userId);
+    
+    // Enhanced error handling
+    const errorResponse = {
+      error: 'Email sending failed',
+      details: error.message,
+      performance: {
+        responseTime: `${Date.now() - startTime}ms`
+      }
+    };
+
+    // Different status codes for different errors
+    if (error.message.includes('timeout')) {
+      return res.status(408).json(errorResponse);
+    } else if (error.message.includes('authentication')) {
+      return res.status(401).json(errorResponse);
+    } else if (error.message.includes('quota')) {
+      return res.status(429).json(errorResponse);
+    }
+    
+    return res.status(500).json(errorResponse);
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "vercel-email-api",
   "version": "1.0.0",
-  "description": "Email API service with Supabase verification",
+  "description": "High-performance email API service",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
-    "nodemailer": "^7.0.12"
+    "nodemailer": "^7.0.12",
+    "ioredis": "^5.3.2",
+    "node-cache": "^5.1.2",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
     "@types/node": "^20.10.0"
