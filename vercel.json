@@ -2,6 +2,9 @@
   "functions": {
     "api/email/send.js": {
       "maxDuration": 30
+    },
+    "api/smtp/config.js": {
+      "maxDuration": 10
     }
   }
 }
