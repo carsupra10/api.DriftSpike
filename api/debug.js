@@ -10,4 +10,4 @@ export default function handler(req, res) {
     },
     timestamp: new Date().toISOString()
   });
-}
+}// Service role key added Mon Dec 29 18:07:36 IST 2025
