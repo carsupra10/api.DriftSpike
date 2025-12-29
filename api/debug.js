@@ -3,9 +3,11 @@ export default function handler(req, res) {
     message: 'Debug info',
     env_check: {
       supabase_url: process.env.SUPABASE_URL ? 'Set' : 'Missing',
-      supabase_key: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
+      supabase_anon_key: process.env.SUPABASE_ANON_KEY ? 'Set' : 'Missing',
+      supabase_service_key: process.env.SUPABASE_SERVICE_KEY ? 'Set' : 'Missing',
       supabase_url_value: process.env.SUPABASE_URL || 'undefined',
-      supabase_key_length: process.env.SUPABASE_ANON_KEY?.length || 0,
+      anon_key_length: process.env.SUPABASE_ANON_KEY?.length || 0,
+      service_key_length: process.env.SUPABASE_SERVICE_KEY?.length || 0,
       all_env_keys: Object.keys(process.env).filter(key => key.includes('SUPABASE'))
     },
     timestamp: new Date().toISOString()
