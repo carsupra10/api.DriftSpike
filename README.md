@@ -1,15 +1,15 @@
 # Vercel Email API Service
 
-A Vercel-based API service that sends emails with Supabase user verification and rate limiting.
+A simplified Vercel-based API service that sends emails with Supabase user verification and rate limiting.
 
 ## Features
 
-- ✅ User verification via Supabase
+- ✅ User verification via Supabase user ID (as API key)
 - ✅ Premium/Free plan checking  
-- ✅ Free user email limit (3000/month)
-- ✅ Dynamic SMTP configuration (inline or stored)
+- ✅ Free user email limit (3000/month), Premium users unlimited
+- ✅ One SMTP configuration per user (stored in database)
 - ✅ Email attachments support
-- ✅ API key authentication
+- ✅ Simple authentication using user ID
 
 ## Setup
 
@@ -20,14 +20,14 @@ A Vercel-based API service that sends emails with Supabase user verification and
 
 2. **Set up Supabase:**
    - Create a new Supabase project
-   - Run the SQL in `supabase-schema.sql` to create the required tables
+   - Run the SQL in `supabase-schema.sql` to create the users table
    - Get your Supabase URL and anon key
 
 3. **Configure environment variables:**
    ```bash
    cp .env.example .env.local
    ```
-   Fill in your Supabase credentials and API key.
+   Fill in your Supabase credentials.
 
 4. **Deploy to Vercel:**
    ```bash
@@ -40,64 +40,15 @@ A Vercel-based API service that sends emails with Supabase user verification and
 **Endpoint:** `POST /api/email/send`
 
 **Headers:**
-- `x-api-key`: Your API key
+- `x-api-key`: Supabase user ID
 - `Content-Type`: application/json
 
-**Body Options:**
-
-**Option 1: Use stored SMTP config by name**
+**Body:**
 ```json
 {
   "to": "recipient@example.com",
   "subject": "Your subject",
   "html": "<h1>Your HTML content</h1>",
-  "smtpConfigName": "Gmail Default"
-}
-```
-
-**Option 2: Use default SMTP config (automatic)**
-```json
-{
-  "to": "recipient@example.com",
-  "subject": "Your subject", 
-  "html": "<h1>Your HTML content</h1>"
-}
-```
-
-**Option 3: Inline SMTP config**
-```json
-{
-  "to": "recipient@example.com",
-  "subject": "Your subject",
-  "html": "<h1>Your HTML content</h1>",
-  "smtpConfig": {
-    "SMTP_HOST": "smtp.gmail.com",
-    "SMTP_PORT": 587,
-    "SMTP_SECURE": false,
-    "SMTP_USER": "your-email@gmail.com", 
-    "SMTP_PASS": "your-app-password",
-    "FROM_NAME": "Your Company"
-  }
-}
-```
-
-### SMTP Configuration Management
-**Endpoint:** `/api/smtp/config`
-
-- `GET ?userEmail=email` - List SMTP configs
-- `POST ?userEmail=email` - Create SMTP config
-- `PUT ?userEmail=email&configId=id` - Update SMTP config  
-- `DELETE ?userEmail=email&configId=id` - Delete SMTP config
-
-## Email Attachments
-
-Add attachments using base64 encoded content:
-
-```json
-{
-  "to": "recipient@example.com",
-  "subject": "Email with attachment",
-  "html": "<h1>Hello</h1>",
   "attachments": [
     {
       "filename": "document.pdf",
@@ -108,6 +59,53 @@ Add attachments using base64 encoded content:
 }
 ```
 
+### Get User SMTP Config
+**Endpoint:** `GET /api/smtp/config`
+
+**Headers:**
+- `x-api-key`: Supabase user ID
+
+**Returns user info and SMTP configuration (password excluded for security)**
+
+## Example Usage
+
+### Send Simple Email
+```bash
+curl -X POST https://your-vercel-app.vercel.app/api/email/send \
+  -H "x-api-key: 5e292193-54fc-49a4-9395-fa7667145400" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "aathishpirate@gmail.com",
+    "subject": "Hello from API",
+    "html": "<h1>Hello!</h1><p>This email was sent via API.</p>"
+  }'
+```
+
+### Send Email with Attachment
+```bash
+curl -X POST https://your-vercel-app.vercel.app/api/email/send \
+  -H "x-api-key: 5e292193-54fc-49a4-9395-fa7667145400" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "aathishpirate@gmail.com",
+    "subject": "Email with Attachment",
+    "html": "<h1>Hello!</h1><p>This email has an attachment.</p>",
+    "attachments": [
+      {
+        "filename": "hello.txt",
+        "content": "SGVsbG8gV29ybGQh",
+        "contentType": "text/plain"
+      }
+    ]
+  }'
+```
+
+### Get User SMTP Configuration
+```bash
+curl -H "x-api-key: 5e292193-54fc-49a4-9395-fa7667145400" \
+  "https://your-vercel-app.vercel.app/api/smtp/config"
+```
+
 ## Response Format
 
 **Success:**
@@ -116,15 +114,25 @@ Add attachments using base64 encoded content:
   "success": true,
   "message": "Email sent successfully",
   "user": {
-    "email": "user@example.com",
+    "id": "5e292193-54fc-49a4-9395-fa7667145400",
+    "email": "aathishpirate@gmail.com",
     "plan": "free", 
-    "emails_sent": 1
+    "emails_sent": 1,
+    "smtp_from": "Company No-Reply"
   }
 }
 ```
 
 **Error Responses:**
-- `401`: Invalid API key
-- `404`: User not found or SMTP config not found
-- `429`: Email limit exceeded (free users)
+- `401`: Missing or invalid API key (user ID)
+- `404`: User not found
+- `429`: Email limit exceeded (free users only)
 - `500`: Server error
+
+## Sample User IDs (API Keys)
+
+For testing, use these user IDs as x-api-key:
+
+- **Free User:** `5e292193-54fc-49a4-9395-fa7667145400` (aathishpirate@gmail.com)
+- **Premium User:** `6f3a2194-65gd-50b5-a406-gb8778256511` (premium@example.com)  
+- **Limit Reached:** `7g4b3295-76he-61c6-b517-hc9889367622` (limit@example.com)
