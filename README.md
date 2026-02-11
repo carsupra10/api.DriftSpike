@@ -1,10 +1,10 @@
 # Ultra-High Performance Email API
 
-A production-ready, ultra-optimized email API service with advanced performance features, load balancing, and comprehensive monitoring.
+A production-ready, ultra-optimized email API service with Firebase backend, advanced performance features, load balancing, and comprehensive monitoring.
 
 ## 🚀 Performance Features
 
-- ✅ **Connection Pooling**: Reused SMTP and database connections
+- ✅ **Connection Pooling**: Reused SMTP connections
 - ✅ **Advanced Caching**: Multi-layer caching with TTL management
 - ✅ **Rate Limiting**: Per-user, per-plan intelligent rate limiting
 - ✅ **Load Balancing**: Multi-region deployment with edge optimization
@@ -13,6 +13,8 @@ A production-ready, ultra-optimized email API service with advanced performance 
 - ✅ **Performance Monitoring**: Real-time metrics and health checks
 - ✅ **Input Validation**: Ultra-fast request validation
 - ✅ **Error Handling**: Intelligent error categorization and retry logic
+- ✅ **Firebase Firestore**: Scalable NoSQL database with real-time capabilities
+- ✅ **Email Reading**: IMAP support with real-time WebSocket notifications
 
 ## 📊 Performance Metrics
 
@@ -90,15 +92,19 @@ curl -H "x-admin-key: your-admin-key" \
 
 ### Rate Limiting
 
-**Free Plan:**
-- 100 requests/hour
-- 5 concurrent requests
-- 3,000 emails/month
+**Starter Plan ($0/month):**
+- 1 request per minute (throttled)
+- 1,500 emails per month
+- 1 concurrent request
+- Basic analytics
+- Email support
 
-**Premium Plan:**
-- 1,000 requests/hour  
-- 20 concurrent requests
-- Unlimited emails
+**Production Plan ($50/month):**
+- 30 requests per minute
+- Unlimited emails per month
+- 10 concurrent requests
+- Advanced analytics
+- Priority support
 
 ### Caching Strategy
 
@@ -158,9 +164,10 @@ All requests include performance metrics:
 ## Environment Variables
 
 ```bash
-# Core Configuration
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_KEY=your_service_key
+# Firebase Configuration
+FIREBASE_PROJECT_ID=driftspike-d1521
+FIREBASE_CLIENT_EMAIL=your_service_account_email
+FIREBASE_PRIVATE_KEY=your_service_account_private_key
 
 # Performance Tuning
 CACHE_TTL=300
@@ -170,6 +177,47 @@ SMTP_POOL_SIZE=10
 # Monitoring
 ADMIN_KEY=your_admin_key
 METRICS_ENABLED=true
+```
+
+## Database Structure (Firebase Firestore)
+
+### Collections
+
+**users** - User accounts and configuration
+```javascript
+{
+  id: "user-uuid",
+  email: "user@example.com",
+  plan_type: "starter" | "production" | "premium",
+  emails_sent_this_month: 0,
+  total_emails_sent: 0,
+  smtp_host: "smtp.gmail.com",
+  smtp_port: 587,
+  smtp_secure: false,
+  smtp_user: "user@gmail.com",
+  smtp_pass: "app-password",
+  from_name: "Company Name",
+  imap_host: "imap.gmail.com",
+  imap_port: 993,
+  imap_secure: true,
+  imap_user: "user@gmail.com",
+  imap_pass: "app-password",
+  created_at: Timestamp,
+  updated_at: Timestamp
+}
+```
+
+**email_logs** - Email sending history
+```javascript
+{
+  user_id: "user-uuid",
+  to: "recipient@example.com",
+  subject: "Email subject",
+  status: "sent" | "failed",
+  response_time: 123,
+  sent_at: Timestamp,
+  error_message: "optional error"
+}
 ```
 
 ## Load Testing Results
@@ -190,10 +238,41 @@ METRICS_ENABLED=true
 
 ## 🚀 Getting Started
 
-1. **Deploy to Vercel** with optimized configuration
-2. **Set environment variables** for your Supabase instance
-3. **Run database migrations** for performance indexes
-4. **Configure monitoring** with admin keys
-5. **Test performance** with provided benchmarks
+### 1. Firebase Setup
+- Create a Firebase project at https://console.firebase.google.com
+- Enable Firestore Database
+- Create a service account and download credentials
+- Deploy Firestore rules and indexes (see MIGRATION_GUIDE.md)
 
-Your ultra-high performance email API is ready for enterprise-scale workloads!
+### 2. Deploy to Vercel
+```bash
+# Set environment variables
+vercel env add FIREBASE_PROJECT_ID
+vercel env add FIREBASE_CLIENT_EMAIL
+vercel env add FIREBASE_PRIVATE_KEY
+vercel env add ADMIN_KEY
+
+# Deploy
+vercel --prod
+```
+
+### 3. Migrate Data (if coming from Supabase)
+```bash
+npm run migrate
+```
+
+### 4. Test Your API
+```bash
+curl -X POST https://your-domain.vercel.app/api/send-email \
+  -H "x-api-key: your-user-id" \
+  -H "Content-Type: application/json" \
+  -d '{"to": "test@example.com", "subject": "Test", "html": "<p>Hello!</p>"}'
+```
+
+Your ultra-high performance email API with Firebase is ready for enterprise-scale workloads!
+
+## 📚 Additional Documentation
+
+- [EMAIL_READING_GUIDE.md](./EMAIL_READING_GUIDE.md) - IMAP and WebSocket setup
+- [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) - Supabase to Firebase migration
+- [PROJECT_LOGIC.md](./PROJECT_LOGIC.md) - System architecture and design

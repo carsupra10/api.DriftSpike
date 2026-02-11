@@ -65,3 +65,5 @@ prisma/migrations/
 *.pem
 *.key
 *.crt
+*.json
+driftspike-*.json

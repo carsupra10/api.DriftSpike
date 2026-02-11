@@ -8,6 +8,18 @@
       "maxDuration": 10,
       "memory": 512
     },
+    "api/read-messages.js": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "api/mark-read.js": {
+      "maxDuration": 10,
+      "memory": 512
+    },
+    "api/websocket.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "api/health.js": {
       "maxDuration": 5,
       "memory": 256
@@ -52,6 +64,10 @@
     {
       "source": "/metrics",
       "destination": "/api/metrics"
+    },
+    {
+      "source": "/ws",
+      "destination": "/api/websocket"
     }
   ]
 }

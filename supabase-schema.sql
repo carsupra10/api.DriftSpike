@@ -1,31 +1,43 @@
--- Optimized users table with performance indexes
+-- Optimized users table with IMAP configuration
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
-  plan_type VARCHAR(20) DEFAULT 'free' CHECK (plan_type IN ('free', 'premium')),
+  plan_type VARCHAR(20) DEFAULT 'starter' CHECK (plan_type IN ('starter', 'production', 'free', 'premium')),
   emails_sent_this_month INTEGER DEFAULT 0,
+  
+  -- SMTP Configuration (for sending)
   smtp_host VARCHAR(255) NOT NULL,
   smtp_port INTEGER DEFAULT 587,
   smtp_secure BOOLEAN DEFAULT false,
   smtp_user VARCHAR(255) NOT NULL,
   smtp_pass VARCHAR(500) NOT NULL,
   from_name VARCHAR(255) NOT NULL,
+  
+  -- IMAP Configuration (for reading)
+  imap_host VARCHAR(255),
+  imap_port INTEGER DEFAULT 993,
+  imap_secure BOOLEAN DEFAULT true,
+  imap_user VARCHAR(255),
+  imap_pass VARCHAR(500),
+  
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_email_sent TIMESTAMP WITH TIME ZONE,
-  total_emails_sent BIGINT DEFAULT 0
+  last_email_read TIMESTAMP WITH TIME ZONE,
+  total_emails_sent BIGINT DEFAULT 0,
+  total_emails_read BIGINT DEFAULT 0
 );
 
 -- Performance indexes
 CREATE INDEX IF NOT EXISTS idx_users_id_hash ON users USING HASH (id);
 CREATE INDEX IF NOT EXISTS idx_users_email_hash ON users USING HASH (email);
 CREATE INDEX IF NOT EXISTS idx_users_plan_type ON users (plan_type);
-CREATE INDEX IF NOT EXISTS idx_users_emails_sent ON users (emails_sent_this_month) WHERE plan_type = 'free';
+CREATE INDEX IF NOT EXISTS idx_users_emails_sent ON users (emails_sent_this_month) WHERE plan_type IN ('starter', 'free');
 CREATE INDEX IF NOT EXISTS idx_users_last_activity ON users (last_email_sent DESC);
 
--- Partial index for active free users (performance optimization)
-CREATE INDEX IF NOT EXISTS idx_active_free_users ON users (id, emails_sent_this_month) 
-WHERE plan_type = 'free' AND emails_sent_this_month < 3000;
+-- Partial index for active starter users (performance optimization)
+CREATE INDEX IF NOT EXISTS idx_active_starter_users ON users (id, emails_sent_this_month) 
+WHERE plan_type IN ('starter', 'free') AND emails_sent_this_month < 1500;
 
 -- Email logs table for analytics (optional)
 CREATE TABLE IF NOT EXISTS email_logs (
@@ -76,9 +88,34 @@ GRANT ALL ON users TO anon, authenticated, service_role;
 GRANT ALL ON email_logs TO anon, authenticated, service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 
--- Insert optimized test data
-INSERT INTO users (id, email, plan_type, emails_sent_this_month, smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_name) VALUES
-('5e292193-54fc-49a4-9395-fa7667145400', 'aathishpirate@gmail.com', 'free', 0, 'smtp.gmail.com', 587, false, 'tagverse.iio@gmail.com', 'axok nqva abmb zbnw', 'Company No-Reply'),
-('6f3a2194-65fd-50b5-a406-fb8778256511', 'premium@example.com', 'premium', 5000, 'smtp.gmail.com', 587, false, 'premium@example.com', 'premium-app-password', 'Premium Service'),
-('7f4b3295-76ae-61c6-b517-ac9889367622', 'limit@example.com', 'free', 2999, 'smtp.gmail.com', 587, false, 'limit@example.com', 'limit-app-password', 'Limit Service')
+-- Insert optimized test data with IMAP configuration
+INSERT INTO users (
+  id, email, plan_type, emails_sent_this_month, 
+  smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_name,
+  imap_host, imap_port, imap_secure, imap_user, imap_pass
+) VALUES
+(
+  '5e292193-54fc-49a4-9395-fa7667145400', 
+  'aathishpirate@gmail.com', 
+  'starter', 
+  0, 
+  'smtp.gmail.com', 587, false, 'tagverse.iio@gmail.com', 'axok nqva abmb zbnw', 'Company No-Reply',
+  'imap.gmail.com', 993, true, 'tagverse.iio@gmail.com', 'axok nqva abmb zbnw'
+),
+(
+  '6f3a2194-65fd-50b5-a406-fb8778256511', 
+  'production@example.com', 
+  'production', 
+  5000, 
+  'smtp.gmail.com', 587, false, 'production@example.com', 'production-app-password', 'Production Service',
+  'imap.gmail.com', 993, true, 'production@example.com', 'production-app-password'
+),
+(
+  '7f4b3295-76ae-61c6-b517-ac9889367622', 
+  'limit@example.com', 
+  'starter', 
+  1499, 
+  'smtp.gmail.com', 587, false, 'limit@example.com', 'limit-app-password', 'Limit Service',
+  'imap.gmail.com', 993, true, 'limit@example.com', 'limit-app-password'
+)
 ON CONFLICT (id) DO NOTHING;

@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection
+    match /users/{userId} {
+      // Allow read if authenticated and requesting own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow write if authenticated and updating own data
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // Admin can read/write all users
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Email logs collection
+    match /emailLogs/{logId} {
+      // Allow read if authenticated and log belongs to user
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      
+      // Allow create for authenticated users
+      allow create: if request.auth != null;
+      
+      // Admin can read all logs
+      allow read: if request.auth != null && 
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Rate limiting collection (internal use only)
+    match /rateLimits/{limitId} {
+      allow read, write: if false; // Only server-side access
+    }
+    
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if request.auth != null && request.auth.uid == adminId;
+    }
+  }
+}

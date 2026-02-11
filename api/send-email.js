@@ -1,8 +1,6 @@
-import { getSupabaseClient, getSmtpTransporter, cacheGet, cacheSet } from '../lib/connection-manager.js';
+import { getFirestoreUser, updateFirestoreUser, getSmtpTransporter, cacheGet, cacheSet } from '../lib/connection-manager.js';
 import { checkRateLimit, releaseRequest, validateEmailRequest } from '../lib/rate-limiter.js';
-
-// Response compression
-const compress = (data) => JSON.stringify(data);
+import { transformFirebaseUser } from '../lib/firebase-utils.js';
 
 export default async function handler(req, res) {
   // Set performance headers
@@ -36,18 +34,13 @@ export default async function handler(req, res) {
     let user = cacheGet(cacheKey);
     
     if (!user) {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, email, plan_type, emails_sent_this_month, smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, from_name')
-        .eq('id', userId)
-        .single();
+      const firebaseUser = await getFirestoreUser(userId);
 
-      if (error || !data) {
+      if (!firebaseUser) {
         return res.status(404).json({ error: 'User not found' });
       }
       
-      user = data;
+      user = transformFirebaseUser(firebaseUser);
       // Cache user data for 5 minutes
       cacheSet(cacheKey, user, 300);
     }
@@ -61,13 +54,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const isPremium = user.plan_type === 'premium';
+    const isPremium = user.plan_type === 'production' || user.plan_type === 'premium';
     
-    // Email limit check for free users
-    if (!isPremium && user.emails_sent_this_month >= 3000) {
+    // Email limit check for starter users
+    if (!isPremium && user.emails_sent_this_month >= 1500) {
       releaseRequest(userId);
       return res.status(429).json({ 
-        error: 'Monthly email limit exceeded (3000/month)' 
+        error: 'Monthly email limit exceeded (1500/month for Starter plan). Upgrade to Production plan for unlimited emails.' 
       });
     }
 
@@ -110,11 +103,10 @@ export default async function handler(req, res) {
     // Update email count asynchronously for free users
     if (!isPremium) {
       // Don't await this - fire and forget for better performance
-      const supabase = getSupabaseClient();
-      supabase
-        .from('users')
-        .update({ emails_sent_this_month: user.emails_sent_this_month + 1 })
-        .eq('id', userId)
+      updateFirestoreUser(userId, { 
+        emailsSentThisMonth: user.emails_sent_this_month + 1,
+        updatedAt: new Date()
+      })
         .then(() => {
           // Invalidate cache after update
           const cacheKey = `user_${userId}`;

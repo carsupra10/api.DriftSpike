@@ -1,4 +1,5 @@
-import { getSupabaseClient, cacheGet, cacheSet } from '../lib/connection-manager.js';
+import { getFirestoreUser, cacheGet, cacheSet } from '../lib/connection-manager.js';
+import { transformFirebaseUser } from '../lib/firebase-utils.js';
 
 export default async function handler(req, res) {
   // Set performance headers
@@ -33,16 +34,13 @@ export default async function handler(req, res) {
     }
 
     // Fetch from database
-    const supabase = getSupabaseClient();
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, email, plan_type, emails_sent_this_month, smtp_host, smtp_port, smtp_secure, smtp_user, from_name, created_at')
-      .eq('id', userId)
-      .single();
+    const firebaseUser = await getFirestoreUser(userId);
 
-    if (error || !user) {
+    if (!firebaseUser) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    const user = transformFirebaseUser(firebaseUser);
 
     const response = {
       user: {
@@ -60,9 +58,10 @@ export default async function handler(req, res) {
         from_name: user.from_name
       },
       limits: {
-        monthly_emails: user.plan_type === 'premium' ? 'unlimited' : 3000,
-        remaining_emails: user.plan_type === 'premium' ? 'unlimited' : Math.max(0, 3000 - user.emails_sent_this_month),
-        requests_per_hour: user.plan_type === 'premium' ? 1000 : 100
+        monthly_emails: (user.plan_type === 'production' || user.plan_type === 'premium') ? 'unlimited' : 1500,
+        remaining_emails: (user.plan_type === 'production' || user.plan_type === 'premium') ? 'unlimited' : Math.max(0, 1500 - user.emails_sent_this_month),
+        requests_per_minute: (user.plan_type === 'production' || user.plan_type === 'premium') ? 30 : 1,
+        requests_per_hour: (user.plan_type === 'production' || user.plan_type === 'premium') ? 1800 : 60
       }
     };
 

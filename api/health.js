@@ -1,4 +1,5 @@
-import { getSupabaseClient } from '../lib/connection-manager.js';
+import { firestore } from '../lib/connection-manager.js';
+import { collection, getDocs, limit, query } from 'firebase/firestore';
 
 let healthMetrics = {
   uptime: Date.now(),
@@ -14,9 +15,15 @@ export default async function handler(req, res) {
 
   try {
     // Quick database health check
-    const supabase = getSupabaseClient();
     const dbStart = Date.now();
-    const { error } = await supabase.from('users').select('id').limit(1);
+    try {
+      const usersRef = collection(firestore, 'users');
+      const q = query(usersRef, limit(1));
+      await getDocs(q);
+      var dbError = null;
+    } catch (err) {
+      var dbError = err;
+    }
     const dbTime = Date.now() - dbStart;
 
     const responseTime = Date.now() - startTime;
@@ -24,13 +31,13 @@ export default async function handler(req, res) {
     healthMetrics.lastCheck = Date.now();
 
     const health = {
-      status: error ? 'degraded' : 'healthy',
+      status: dbError ? 'degraded' : 'healthy',
       timestamp: new Date().toISOString(),
       uptime: Date.now() - healthMetrics.uptime,
       database: {
-        status: error ? 'error' : 'connected',
+        status: dbError ? 'error' : 'connected',
         responseTime: `${dbTime}ms`,
-        error: error?.message
+        error: dbError?.message
       },
       metrics: {
         totalRequests: healthMetrics.requests,
@@ -46,7 +53,7 @@ export default async function handler(req, res) {
     };
 
     res.setHeader('Cache-Control', 'no-cache');
-    return res.status(error ? 503 : 200).json(health);
+    return res.status(dbError ? 503 : 200).json(health);
 
   } catch (error) {
     healthMetrics.errors++;
