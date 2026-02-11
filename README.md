@@ -1,278 +1,304 @@
-# Ultra-High Performance Email API
+# DriftSpike Email API
 
-A production-ready, ultra-optimized email API service with Firebase backend, advanced performance features, load balancing, and comprehensive monitoring.
+Ultra-fast, production-ready email API built with Firebase Firestore, optimized for performance and scalability.
 
-## 🚀 Performance Features
+## 🚀 Features
 
-- ✅ **Connection Pooling**: Reused SMTP connections
-- ✅ **Advanced Caching**: Multi-layer caching with TTL management
-- ✅ **Rate Limiting**: Per-user, per-plan intelligent rate limiting
-- ✅ **Load Balancing**: Multi-region deployment with edge optimization
-- ✅ **Concurrent Request Management**: Prevents resource exhaustion
-- ✅ **Async Operations**: Non-blocking database updates
-- ✅ **Performance Monitoring**: Real-time metrics and health checks
-- ✅ **Input Validation**: Ultra-fast request validation
-- ✅ **Error Handling**: Intelligent error categorization and retry logic
-- ✅ **Firebase Firestore**: Scalable NoSQL database with real-time capabilities
-- ✅ **Email Reading**: IMAP support with real-time WebSocket notifications
+- ✅ **Send Emails** - SMTP-based email sending with attachment support
+- ✅ **Read Emails** - IMAP integration for reading incoming messages
+- ✅ **Real-time Notifications** - WebSocket support for instant email alerts
+- ✅ **Rate Limiting** - Per-user, per-plan intelligent rate limiting
+- ✅ **Caching** - Multi-layer caching for sub-100ms response times
+- ✅ **Connection Pooling** - Efficient SMTP connection management
+- ✅ **Performance Monitoring** - Health checks and metrics endpoints
+- ✅ **Firebase Firestore** - Scalable NoSQL database backend
 
-## 📊 Performance Metrics
+## 📊 Performance
 
-- **Response Time**: < 100ms (cached), < 500ms (database)
-- **Throughput**: 1000+ requests/second per region
-- **Concurrent Users**: 10,000+ simultaneous users
-- **Uptime**: 99.9% SLA with health monitoring
-- **Cache Hit Rate**: 85%+ for user data
-- **Email Delivery**: < 2 seconds average
+- **Response Time**: < 100ms (cached), < 500ms (uncached)
+- **Throughput**: 1000+ requests/second
+- **Uptime**: 99.9% SLA
+- **Cache Hit Rate**: 85%+
 
-## 🌍 Global Deployment
+## 🔗 Base URL
 
-Deployed across multiple regions for optimal performance:
-- **US East** (Virginia) - Primary
-- **US West** (San Francisco) 
-- **Europe** (London)
-- **Asia** (Tokyo)
+```
+https://api-drift-spike.vercel.app/api
+```
 
-## API Endpoints
+## 🔑 Authentication
 
-### Send Email (Ultra-Optimized)
-**POST** `/api/send-email`
+All requests require your API key (Firebase User ID) in the `x-api-key` header:
 
-**Performance Features:**
-- Connection pooling with up to 10 concurrent SMTP connections
-- Async database updates (fire-and-forget)
-- Request validation in < 1ms
-- Automatic retry logic with exponential backoff
-- 30-second timeout with graceful handling
+```bash
+-H "x-api-key: YOUR_USER_ID"
+```
+
+## 📖 Quick Start
+
+### Send an Email
 
 ```bash
 curl -X POST https://api-drift-spike.vercel.app/api/send-email \
-  -H "x-api-key: 5e292193-54fc-49a4-9395-fa7667145400" \
+  -H "x-api-key: YOUR_USER_ID" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "user@example.com",
-    "subject": "High-Performance Email",
-    "html": "<h1>Ultra-fast delivery!</h1>"
+    "subject": "Hello World",
+    "html": "<h1>Welcome!</h1>"
   }'
 ```
 
-### Get Configuration (Cached)
-**GET** `/api/get-config`
-
-**Performance Features:**
-- 5-minute intelligent caching
-- Sub-50ms response time for cached data
-- Automatic cache invalidation on updates
+### Get Your Configuration
 
 ```bash
-curl -H "x-api-key: 5e292193-54fc-49a4-9395-fa7667145400" \
-  "https://api-drift-spike.vercel.app/api/get-config"
+curl -H "x-api-key: YOUR_USER_ID" \
+  https://api-drift-spike.vercel.app/api/get-config
 ```
 
-### Health Check & Monitoring
-**GET** `/api/health`
-
-Real-time system health and performance metrics:
+### Read Messages
 
 ```bash
-curl "https://api-drift-spike.vercel.app/api/health"
+curl -H "x-api-key: YOUR_USER_ID" \
+  "https://api-drift-spike.vercel.app/api/read-messages?limit=10"
 ```
 
-### Performance Metrics (Admin)
-**GET** `/api/metrics`
+## 📚 API Endpoints
 
-Comprehensive performance analytics:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/send-email` | Send an email |
+| GET | `/get-config` | Get account configuration |
+| GET | `/read-messages` | Read emails via IMAP |
+| POST | `/mark-read` | Mark message as read |
+| GET | `/websocket` | WebSocket connection |
+| GET | `/health` | Health check |
+| GET | `/metrics` | Performance metrics (admin) |
 
-```bash
-curl -H "x-admin-key: your-admin-key" \
-  "https://api-drift-spike.vercel.app/api/metrics"
-```
+## 💰 Pricing
 
-## 🔧 Advanced Configuration
-
-### Rate Limiting
-
-**Starter Plan ($0/month):**
-- 1 request per minute (throttled)
-- 1,500 emails per month
-- 1 concurrent request
+### Starter Plan (Free)
+- 1,500 emails/month
+- 1 request/minute
 - Basic analytics
 - Email support
 
-**Production Plan ($50/month):**
-- 30 requests per minute
-- Unlimited emails per month
-- 10 concurrent requests
+### Production Plan ($50/month)
+- Unlimited emails
+- 30 requests/minute
 - Advanced analytics
 - Priority support
+- 99.9% SLA
 
-### Caching Strategy
+## 🛠️ Setup
 
-- **User Data**: 5 minutes TTL
-- **Configuration**: 5 minutes TTL
-- **Rate Limits**: 1 hour sliding window
-- **Health Metrics**: 1 minute TTL
+### 1. Get Your API Key
 
-### Performance Monitoring
+Your API key is your Firebase User ID from the Firestore `users` collection.
 
-All requests include performance metrics:
+### 2. Configure SMTP
 
-```json
+Update your user document in Firestore:
+
+```javascript
 {
-  "success": true,
-  "message": "Email sent successfully",
-  "performance": {
-    "responseTime": "87ms",
-    "cached": true
+  smtp: {
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false,
+    user: "your@gmail.com",
+    pass: "your-app-password",
+    fromName: "Your Name"
   }
 }
 ```
 
-## 🛡️ Security & Reliability
+### 3. Configure IMAP (Optional)
 
-- **Input Validation**: Comprehensive request sanitization
-- **Rate Limiting**: Prevents abuse and ensures fair usage
-- **Error Handling**: Intelligent error categorization
-- **Security Headers**: OWASP-compliant security headers
-- **Connection Limits**: Prevents resource exhaustion
-- **Graceful Degradation**: Maintains service during high load
+For email reading:
 
-## 📈 Scalability Features
-
-- **Horizontal Scaling**: Auto-scales across multiple regions
-- **Connection Pooling**: Efficient resource utilization
-- **Async Processing**: Non-blocking operations
-- **Load Balancing**: Intelligent request distribution
-- **Circuit Breakers**: Prevents cascade failures
-- **Health Checks**: Automatic failover capabilities
-
-## 🔍 Monitoring & Analytics
-
-### Real-time Metrics
-- Request volume and response times
-- Error rates and success rates  
-- Cache hit ratios
-- Database performance
-- Memory and CPU usage
-
-### User Analytics
-- Email sending patterns
-- Plan usage statistics
-- Geographic distribution
-- Peak usage times
-
-## Environment Variables
-
-```bash
-# Firebase Configuration
-FIREBASE_PROJECT_ID=driftspike-d1521
-FIREBASE_CLIENT_EMAIL=your_service_account_email
-FIREBASE_PRIVATE_KEY=your_service_account_private_key
-
-# Performance Tuning
-CACHE_TTL=300
-MAX_CONCURRENT_REQUESTS=20
-SMTP_POOL_SIZE=10
-
-# Monitoring
-ADMIN_KEY=your_admin_key
-METRICS_ENABLED=true
-```
-
-## Database Structure (Firebase Firestore)
-
-### Collections
-
-**users** - User accounts and configuration
 ```javascript
 {
-  id: "user-uuid",
-  email: "user@example.com",
-  plan_type: "starter" | "production" | "premium",
-  emails_sent_this_month: 0,
-  total_emails_sent: 0,
-  smtp_host: "smtp.gmail.com",
-  smtp_port: 587,
-  smtp_secure: false,
-  smtp_user: "user@gmail.com",
-  smtp_pass: "app-password",
-  from_name: "Company Name",
-  imap_host: "imap.gmail.com",
-  imap_port: 993,
-  imap_secure: true,
-  imap_user: "user@gmail.com",
-  imap_pass: "app-password",
-  created_at: Timestamp,
-  updated_at: Timestamp
+  imap: {
+    host: "imap.gmail.com",
+    port: 993,
+    secure: true,
+    user: "your@gmail.com",
+    pass: "your-app-password"
+  }
 }
 ```
 
-**email_logs** - Email sending history
-```javascript
-{
-  user_id: "user-uuid",
-  to: "recipient@example.com",
-  subject: "Email subject",
-  status: "sent" | "failed",
-  response_time: 123,
-  sent_at: Timestamp,
-  error_message: "optional error"
-}
+### 4. Test
+
+```bash
+curl -H "x-api-key: YOUR_USER_ID" \
+  https://api-drift-spike.vercel.app/api/get-config
 ```
 
-## Load Testing Results
+## 📝 Code Examples
 
-**Benchmark Configuration:**
-- 10,000 concurrent users
-- 1 million requests over 10 minutes
-- Mixed read/write operations
+### JavaScript
 
-**Results:**
-- **Average Response Time**: 156ms
-- **95th Percentile**: 340ms  
-- **99th Percentile**: 890ms
-- **Error Rate**: 0.02%
-- **Throughput**: 1,667 requests/second
-- **CPU Usage**: 45% average
-- **Memory Usage**: 512MB average
+```javascript
+const response = await fetch('https://api-drift-spike.vercel.app/api/send-email', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'YOUR_USER_ID',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    to: 'user@example.com',
+    subject: 'Hello',
+    html: '<h1>Welcome!</h1>'
+  })
+});
 
-## 🚀 Getting Started
+const data = await response.json();
+console.log(data);
+```
 
-### 1. Firebase Setup
-- Create a Firebase project at https://console.firebase.google.com
-- Enable Firestore Database
-- Create a service account and download credentials
-- Deploy Firestore rules and indexes (see MIGRATION_GUIDE.md)
+### Python
 
-### 2. Deploy to Vercel
+```python
+import requests
+
+response = requests.post(
+    'https://api-drift-spike.vercel.app/api/send-email',
+    headers={'x-api-key': 'YOUR_USER_ID'},
+    json={
+        'to': 'user@example.com',
+        'subject': 'Hello',
+        'html': '<h1>Welcome!</h1>'
+    }
+)
+
+print(response.json())
+```
+
+## 📖 Full Documentation
+
+See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for complete API reference, including:
+- Detailed endpoint documentation
+- Request/response examples
+- Error codes
+- Rate limiting details
+- WebSocket usage
+- Best practices
+
+## 🏗️ Architecture
+
+- **Backend**: Vercel Serverless Functions
+- **Database**: Firebase Firestore
+- **Email**: Nodemailer (SMTP) + IMAP
+- **Caching**: NodeCache (in-memory)
+- **Real-time**: WebSocket (ws)
+
+## 📊 Project Structure
+
+```
+api.driftspike/
+├── api/                    # API endpoints
+│   ├── send-email.js      # Send emails
+│   ├── get-config.js      # Get configuration
+│   ├── read-messages.js   # Read emails (IMAP)
+│   ├── mark-read.js       # Mark as read
+│   ├── websocket.js       # WebSocket server
+│   ├── health.js          # Health check
+│   └── metrics.js         # Performance metrics
+├── lib/                    # Utilities
+│   ├── connection-manager.js  # Connection pooling
+│   ├── firebase-manager.js    # Firebase operations
+│   ├── firebase-utils.js      # Data transformations
+│   ├── imap-manager.js        # IMAP operations
+│   └── rate-limiter.js        # Rate limiting
+├── scripts/                # Migration scripts
+├── firebase-config.js      # Firebase initialization
+├── firestore.rules         # Firestore security rules
+├── firestore.indexes.json  # Firestore indexes
+└── vercel.json            # Vercel configuration
+```
+
+## 🔒 Security
+
+- Firebase Authentication ready
+- API key authentication
+- Rate limiting per user
+- HTTPS only
+- Input validation
+- Error sanitization
+
+## 🚀 Deployment
+
+### Deploy to Vercel
+
 ```bash
-# Set environment variables
-vercel env add FIREBASE_PROJECT_ID
-vercel env add FIREBASE_CLIENT_EMAIL
-vercel env add FIREBASE_PRIVATE_KEY
-vercel env add ADMIN_KEY
-
-# Deploy
 vercel --prod
 ```
 
-### 3. Migrate Data (if coming from Supabase)
+### Environment Variables
+
+Set in Vercel dashboard:
+
 ```bash
-npm run migrate
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+ADMIN_KEY=your-admin-key
 ```
 
-### 4. Test Your API
+### Deploy Firestore Rules
+
 ```bash
-curl -X POST https://your-domain.vercel.app/api/send-email \
-  -H "x-api-key: your-user-id" \
-  -H "Content-Type: application/json" \
-  -d '{"to": "test@example.com", "subject": "Test", "html": "<p>Hello!</p>"}'
+firebase deploy --only firestore:rules
+firebase deploy --only firestore:indexes
 ```
 
-Your ultra-high performance email API with Firebase is ready for enterprise-scale workloads!
+## 📈 Monitoring
 
-## 📚 Additional Documentation
+### Health Check
 
-- [EMAIL_READING_GUIDE.md](./EMAIL_READING_GUIDE.md) - IMAP and WebSocket setup
-- [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) - Supabase to Firebase migration
-- [PROJECT_LOGIC.md](./PROJECT_LOGIC.md) - System architecture and design
+```bash
+curl https://api-drift-spike.vercel.app/api/health
+```
+
+### Metrics (Admin)
+
+```bash
+curl -H "x-admin-key: YOUR_ADMIN_KEY" \
+  https://api-drift-spike.vercel.app/api/metrics
+```
+
+## 🐛 Troubleshooting
+
+### "User not found"
+- Check your API key is correct
+- Verify user exists in Firestore
+
+### "Rate limit exceeded"
+- Wait 1 minute (starter plan)
+- Upgrade to production plan
+
+### "SMTP connection failed"
+- Verify SMTP credentials in Firestore
+- Check SMTP host and port
+- Use app-specific password for Gmail
+
+## 📞 Support
+
+- Documentation: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+- Issues: Check Vercel logs
+- Database: Firebase Console
+
+## 📄 License
+
+MIT
+
+## 🎉 Credits
+
+Built with:
+- [Vercel](https://vercel.com) - Serverless deployment
+- [Firebase](https://firebase.google.com) - Database
+- [Nodemailer](https://nodemailer.com) - Email sending
+- [IMAP](https://www.npmjs.com/package/imap) - Email reading
+- [WebSocket](https://www.npmjs.com/package/ws) - Real-time notifications
